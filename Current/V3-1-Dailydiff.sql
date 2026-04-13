@@ -4,7 +4,7 @@
     Parametric SQL Agent job for DAILY DIFFERENTIAL backups to Azure Blob Storage.
     All databases in the list get individual job steps.
 
-    Deploy with: sqlcmd -S <server> -i V3-1-Dailydiff.sql [-v DatabaseList="db1,db2" StorageAccountName="myaccount" ...]
+    Deploy with: sqlcmd -S <server> -i V3-1-Dailydiff.sql [-v StorageAccountName="myaccount" ...]
 */
 
 -- SQLCMD variable defaults (override with sqlcmd -v)
