@@ -1,0 +1,51 @@
+
+--<your-resource-group>
+--<your-subscription-id>
+--<mystorageaccount>
+
+{
+  "Name": "SQL Backup Blob Writer No Delete",
+  "Description": "Allows SQL Server Managed Identity to read and write blobs but not delete",
+  "Actions": [],
+  "NotActions": [],
+  "DataActions": [
+    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read",
+    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write",
+    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/add/action",
+    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/move/action"
+  ],
+  "NotDataActions": [
+    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/delete"
+  ],
+  "AssignableScopes": [
+    "/subscriptions/<your-subscription-id>/resourceGroups/<your-resource-group>/providers/Microsoft.Storage/storageAccounts/<mystorageaccount>"
+  ]
+}
+
+OR
+
+
+
+
+{
+  "Name": "RESI SQL Backup Blob Writer No Delete",
+  "Description": "Allows SQL Server Managed Identity to read and write blobs but not delete",
+  "Actions": [
+    "Microsoft.Storage/storageAccounts/blobServices/containers/read",
+    "Microsoft.Storage/storageAccounts/blobServices/read",
+    "Microsoft.Storage/storageAccounts/read"
+  ],
+  "NotActions": [],
+  "DataActions": [
+    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read",
+    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write",
+    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/add/action",
+    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/move/action"
+  ],
+  "NotDataActions": [
+    "Microsoft.Storage/storageAccounts/blobServices/containers/blobs/delete"
+  ],
+  "AssignableScopes": [
+    "/subscriptions/<your-subscription-id>/resourceGroups/<your-resource-group>/providers/Microsoft.Storage/storageAccounts/resiazprodechobackups"
+  ]
+}

@@ -11,24 +11,10 @@
 :setvar StorageAccountName "redazprodechobackups"
 
 -- Drop and recreate credentials (idempotent)
-IF EXISTS (SELECT 1 FROM sys.credentials WHERE name = N'https://$(StorageAccountName).blob.core.windows.net/v3-1-weeklychain/logs')
-    DROP CREDENTIAL [https://$(StorageAccountName).blob.core.windows.net/v3-1-weeklychain/logs];
+IF EXISTS (SELECT 1 FROM sys.credentials WHERE name = N'https://$(StorageAccountName).blob.core.windows.net/v3-1-weeklychain')
+    DROP CREDENTIAL [https://$(StorageAccountName).blob.core.windows.net/v3-1-weeklychain];
 
-CREATE CREDENTIAL [https://$(StorageAccountName).blob.core.windows.net/v3-1-weeklychain/logs]
-WITH IDENTITY = 'Managed Identity';
-GO
-
-IF EXISTS (SELECT 1 FROM sys.credentials WHERE name = N'https://$(StorageAccountName).blob.core.windows.net/v3-1-weeklychain/dailydiff')
-    DROP CREDENTIAL [https://$(StorageAccountName).blob.core.windows.net/v3-1-weeklychain/dailydiff];
-
-CREATE CREDENTIAL [https://$(StorageAccountName).blob.core.windows.net/v3-1-weeklychain/dailydiff]
-WITH IDENTITY = 'Managed Identity';
-GO
-
-IF EXISTS (SELECT 1 FROM sys.credentials WHERE name = N'https://$(StorageAccountName).blob.core.windows.net/v3-1-weeklychain/weeklyfull')
-    DROP CREDENTIAL [https://$(StorageAccountName).blob.core.windows.net/v3-1-weeklychain/weeklyfull];
-
-CREATE CREDENTIAL [https://$(StorageAccountName).blob.core.windows.net/v3-1-weeklychain/weeklyfull]
+CREATE CREDENTIAL [https://$(StorageAccountName).blob.core.windows.net/v3-1-weeklychain]
 WITH IDENTITY = 'Managed Identity';
 GO
 

@@ -1,0 +1,248 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+.wrap { padding: 1rem 0; }
+.section { margin-bottom: 1.5rem; }
+label { font-size: 13px; color: var(--color-text-secondary); display: block; margin-bottom: 6px; }
+textarea { width: 100%; height: 80px; font-family: var(--font-mono); font-size: 12px; resize: vertical; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); padding: 8px; background: var(--color-background-secondary); color: var(--color-text-primary); }
+input[type=text] { width: 100%; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); padding: 8px 10px; font-size: 14px; background: var(--color-background-secondary); color: var(--color-text-primary); }
+select { width: 100%; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); padding: 8px 10px; font-size: 14px; background: var(--color-background-secondary); color: var(--color-text-primary); }
+button { border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); padding: 8px 16px; font-size: 14px; cursor: pointer; background: var(--color-background-primary); color: var(--color-text-primary); }
+button:hover { background: var(--color-background-secondary); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.parsed-box { background: var(--color-background-secondary); border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); padding: 12px; font-size: 13px; }
+.parsed-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.parsed-row:last-child { border-bottom: none; }
+.parsed-key { color: var(--color-text-secondary); }
+.parsed-val { color: var(--color-text-primary); font-family: var(--font-mono); font-size: 12px; }
+.expire-ok { color: var(--color-text-success); font-weight: 500; }
+.expire-warn { color: var(--color-text-warning); font-weight: 500; }
+.expire-bad { color: var(--color-text-danger); font-weight: 500; }
+.sql-box { background: var(--color-background-secondary); border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); padding: 12px; font-family: var(--font-mono); font-size: 12px; color: var(--color-text-primary); white-space: pre-wrap; word-break: break-all; }
+.btn-row { display: flex; gap: 8px; margin-top: 8px; }
+.badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: var(--border-radius-md); }
+.badge-ok { background: var(--color-background-success); color: var(--color-text-success); }
+.badge-warn { background: var(--color-background-warning); color: var(--color-text-warning); }
+.badge-bad { background: var(--color-background-danger); color: var(--color-text-danger); }
+.err { color: var(--color-text-danger); font-size: 13px; margin-top: 6px; }
+h3 { font-size: 15px; font-weight: 500; margin-bottom: 12px; color: var(--color-text-primary); }
+</style>
+
+<div class="wrap">
+  <div class="section">
+    <h3>1. SAS token yapıştır</h3>
+    <label>SAS Token (? ile başlayabilir, tam URL de olabilir)</label>
+    <textarea id="tokenInput" placeholder="?sv=2022-11-02&ss=b&srt=co&sp=rwdlacuptfx&se=2026-12-31T00:00:00Z&st=2024-01-01T00:00:00Z&spr=https&sig=XXXX"></textarea>
+  </div>
+
+  <div class="section row2">
+    <div>
+      <label>Container URL</label>
+      <input type="text" id="containerUrl" placeholder="https://resiazprodechobackups.blob.core.windows.net/v3-1-weeklychain/weeklyfull" />
+    </div>
+    <div>
+      <label>Hedef veritabanı</label>
+      <input type="text" id="targetDb" placeholder="dpAudit" />
+    </div>
+  </div>
+
+  <div class="section row2">
+    <div>
+      <label>Hedef tablo (schema.tablo)</label>
+      <input type="text" id="targetTable" placeholder="dbo.BackupCredentialTracker" />
+    </div>
+    <div>
+      <label>Ortam / Notlar</label>
+      <input type="text" id="notes" placeholder="RESISQLPROD1 - weeklyfull" />
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button onclick="parse()">Parse &amp; Üret ↗</button>
+    <button onclick="clearAll()">Temizle</button>
+  </div>
+  <div id="err" class="err"></div>
+
+  <div id="result" style="display:none; margin-top:1.5rem;">
+    <div class="section">
+      <h3>2. Parse edilen bilgiler</h3>
+      <div class="parsed-box" id="parsedInfo"></div>
+    </div>
+
+    <div class="section">
+      <h3>3. Tablo oluşturma SQL (ilk kurulum)</h3>
+      <div class="sql-box" id="createSql"></div>
+      <div class="btn-row">
+        <button onclick="copy('createSql')">Kopyala</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>4. INSERT / UPDATE SQL</h3>
+      <div class="sql-box" id="upsertSql"></div>
+      <div class="btn-row">
+        <button onclick="copy('upsertSql')">Kopyala</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>5. Expire kontrolü SQL</h3>
+      <div class="sql-box" id="checkSql"></div>
+      <div class="btn-row">
+        <button onclick="copy('checkSql')">Kopyala</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function parseSasToken(raw) {
+  let qs = raw.trim();
+  if (qs.includes('?')) qs = qs.split('?').slice(1).join('?');
+  const params = {};
+  qs.split('&').forEach(p => {
+    const [k, ...v] = p.split('=');
+    if (k) params[k] = decodeURIComponent(v.join('='));
+  });
+  return params;
+}
+
+function getExpireStatus(expireStr) {
+  if (!expireStr) return { label: 'Bilinmiyor', cls: 'expire-warn', badge: 'badge-warn' };
+  const exp = new Date(expireStr);
+  const now = new Date();
+  const days = Math.ceil((exp - now) / 86400000);
+  if (days < 0) return { label: `Süresi dolmuş (${Math.abs(days)} gün önce)`, cls: 'expire-bad', badge: 'badge-bad' };
+  if (days <= 30) return { label: `${days} gün kaldı - UYARI`, cls: 'expire-warn', badge: 'badge-warn' };
+  return { label: `${days} gün kaldı`, cls: 'expire-ok', badge: 'badge-ok' };
+}
+
+function parse() {
+  const raw = document.getElementById('tokenInput').value.trim();
+  const containerUrl = document.getElementById('containerUrl').value.trim();
+  const targetDb = document.getElementById('targetDb').value.trim() || 'YourDatabase';
+  const targetTable = document.getElementById('targetTable').value.trim() || 'dbo.BackupCredentialTracker';
+  const notes = document.getElementById('notes').value.trim();
+  const errEl = document.getElementById('err');
+  errEl.textContent = '';
+
+  if (!raw) { errEl.textContent = 'SAS token boş olamaz.'; return; }
+
+  const params = parseSasToken(raw);
+  const se = params['se'] || '';
+  const st = params['st'] || '';
+  const sv = params['sv'] || '';
+  const sp = params['sp'] || '';
+  const spr = params['spr'] || '';
+
+  if (!se) { errEl.textContent = "Token içinde 'se' (expire date) parametresi bulunamadı."; return; }
+
+  const expStatus = getExpireStatus(se);
+  const cleanToken = raw.trim().replace(/^\?/, '');
+  const credName = containerUrl || 'https://<storageaccount>.blob.core.windows.net/<container>';
+
+  document.getElementById('parsedInfo').innerHTML = `
+    <div class="parsed-row"><span class="parsed-key">Container URL</span><span class="parsed-val">${credName}</span></div>
+    <div class="parsed-row"><span class="parsed-key">API Version (sv)</span><span class="parsed-val">${sv || '-'}</span></div>
+    <div class="parsed-row"><span class="parsed-key">Start (st)</span><span class="parsed-val">${st || '-'}</span></div>
+    <div class="parsed-row"><span class="parsed-key">Expire (se)</span><span class="parsed-val ${expStatus.cls}">${se} &nbsp;<span class="badge ${expStatus.badge}">${expStatus.label}</span></span></div>
+    <div class="parsed-row"><span class="parsed-key">Permissions (sp)</span><span class="parsed-val">${sp || '-'}</span></div>
+    <div class="parsed-row"><span class="parsed-key">Protocol (spr)</span><span class="parsed-val">${spr || '-'}</span></div>
+  `;
+
+  const expireFormatted = se.replace('T', ' ').replace('Z', '');
+
+  document.getElementById('createSql').textContent =
+`USE [${targetDb}];
+
+IF NOT EXISTS (
+  SELECT 1 FROM sys.tables t
+  JOIN sys.schemas s ON t.schema_id = s.schema_id
+  WHERE s.name = '${targetTable.split('.')[0]}' 
+    AND t.name = '${targetTable.split('.')[1]}'
+)
+BEGIN
+  CREATE TABLE ${targetTable} (
+    ContainerUrl        NVARCHAR(500)  NOT NULL PRIMARY KEY,
+    SASExpireDate       DATETIME2      NOT NULL,
+    SASStartDate        DATETIME2      NULL,
+    SASVersion          NVARCHAR(20)   NULL,
+    SASPermissions      NVARCHAR(50)   NULL,
+    Notes               NVARCHAR(500)  NULL,
+    LastUpdated         DATETIME2      NOT NULL DEFAULT GETUTCDATE(),
+    UpdatedBy           NVARCHAR(100)  NOT NULL DEFAULT SUSER_SNAME()
+  );
+  PRINT 'Tablo oluşturuldu: ${targetTable}';
+END
+ELSE
+  PRINT 'Tablo zaten mevcut: ${targetTable}';`;
+
+  document.getElementById('upsertSql').textContent =
+`USE [${targetDb}];
+
+MERGE ${targetTable} AS target
+USING (
+  SELECT 
+    N'${credName}'           AS ContainerUrl,
+    '${expireFormatted}'     AS SASExpireDate,
+    ${st ? `'${st.replace('T',' ').replace('Z','')}'` : 'NULL'}        AS SASStartDate,
+    '${sv}'                  AS SASVersion,
+    '${sp}'                  AS SASPermissions,
+    ${notes ? `N'${notes}'` : 'NULL'}            AS Notes
+) AS src ON target.ContainerUrl = src.ContainerUrl
+WHEN MATCHED THEN
+  UPDATE SET
+    SASExpireDate  = src.SASExpireDate,
+    SASStartDate   = src.SASStartDate,
+    SASVersion     = src.SASVersion,
+    SASPermissions = src.SASPermissions,
+    Notes          = src.Notes,
+    LastUpdated    = GETUTCDATE(),
+    UpdatedBy      = SUSER_SNAME()
+WHEN NOT MATCHED THEN
+  INSERT (ContainerUrl, SASExpireDate, SASStartDate, SASVersion, SASPermissions, Notes)
+  VALUES (src.ContainerUrl, src.SASExpireDate, src.SASStartDate, src.SASVersion, src.SASPermissions, src.Notes);
+
+PRINT 'Kayıt eklendi/güncellendi: ${credName}';`;
+
+  document.getElementById('checkSql').textContent =
+`USE [${targetDb}];
+
+SELECT
+  ContainerUrl,
+  SASExpireDate,
+  DATEDIFF(DAY, GETUTCDATE(), SASExpireDate) AS KalanGun,
+  CASE
+    WHEN SASExpireDate < GETUTCDATE()              THEN 'SURESI DOLMUS'
+    WHEN SASExpireDate < DATEADD(DAY,30,GETUTCDATE()) THEN 'KRITIK - 30 GUN ICINDE'
+    WHEN SASExpireDate < DATEADD(DAY,60,GETUTCDATE()) THEN 'UYARI - 60 GUN ICINDE'
+    ELSE 'OK'
+  END AS Durum,
+  Notes,
+  LastUpdated,
+  UpdatedBy
+FROM ${targetTable}
+ORDER BY SASExpireDate ASC;`;
+
+  document.getElementById('result').style.display = 'block';
+}
+
+function copy(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).catch(() => {
+    const el = document.getElementById(id);
+    const range = document.createRange();
+    range.selectNode(el);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.execCommand('copy');
+  });
+}
+
+function clearAll() {
+  ['tokenInput','containerUrl','targetDb','targetTable','notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('err').textContent = '';
+}
+</script>
